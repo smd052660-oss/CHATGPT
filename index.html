@@ -1,106 +1,177 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern AI Chatbot</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Custom scrollbar for a cleaner look */
-        .chat-container::-webkit-scrollbar { width: 6px; }
-        .chat-container::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 10px; }
-        
-        /* Animation for new messages */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .message-fade { animation: fadeIn 0.3s ease-out forwards; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Universal AI Chat</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Marked.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+    }
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  </style>
 </head>
-<body class="bg-gray-50 h-screen flex flex-col">
 
-    <header class="bg-white border-b p-4 flex justify-between items-center shadow-sm">
-        <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">AI</div>
-            <h1 class="font-semibold text-gray-800">Neural Assistant</h1>
-        </div>
-        <button id="clear-btn" class="text-xs text-gray-400 hover:text-red-500 transition">Clear Chat</button>
-    </header>
+<body class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
 
-    <main id="chat-window" class="chat-container flex-1 overflow-y-auto p-4 space-y-4">
-        <div class="flex justify-start message-fade">
-            <div class="bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none max-w-[80%] shadow-sm">
-                Hello! I am your AI assistant. How can I help you today?
-            </div>
-        </div>
-    </main>
+<!-- Loader -->
+<div id="loading" class="fixed inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-50">
+  <span class="text-lg font-medium">Loading App...</span>
+</div>
 
-    <footer class="p-4 bg-white border-t">
-        <div class="max-w-4xl mx-auto flex gap-2">
-            <input type="text" id="user-input" placeholder="Type your message..." 
-                class="flex-1 border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-            <button id="send-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-medium transition flex items-center gap-2">
-                Send
-            </button>
-        </div>
-    </footer>
+<div id="app" class="min-h-screen flex">
 
-    <script>
-        const chatWindow = document.getElementById('chat-window');
-        const userInput = document.getElementById('user-input');
-        const sendBtn = document.getElementById('send-btn');
-        const clearBtn = document.getElementById('clear-btn');
+  <!-- Sidebar -->
+  <aside id="sidebar"
+    class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
+           transform -translate-x-full md:translate-x-0 transition-transform duration-200 flex flex-col">
 
-        // Function to add messages to the UI
-        function addMessage(text, isUser = false) {
-            const wrapper = document.createElement('div');
-            wrapper.className = `flex ${isUser ? 'justify-end' : 'justify-start'} message-fade`;
+    <div class="p-4 flex justify-between items-center border-b dark:border-gray-700">
+      <span class="font-semibold">Chats</span>
+      <button id="newChatBtn" class="text-sm px-2 py-1 bg-blue-600 text-white rounded">New</button>
+    </div>
 
-            const msgDiv = document.createElement('div');
-            msgDiv.className = isUser 
-                ? "bg-indigo-600 text-white p-3 rounded-2xl rounded-tr-none max-w-[80%] shadow-md"
-                : "bg-white border border-gray-200 text-gray-800 p-3 rounded-2xl rounded-tl-none max-w-[80%] shadow-sm";
-            
-            msgDiv.textContent = text;
-            wrapper.appendChild(msgDiv);
-            chatWindow.appendChild(wrapper);
+    <div id="chatList" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
 
-            // Auto-scroll to bottom
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
+    <div class="p-2 border-t dark:border-gray-700 flex justify-between items-center">
+      <button id="settingsBtn" class="text-sm">⚙ Settings</button>
+      <button id="darkToggle" class="text-sm">🌙</button>
+    </div>
+  </aside>
 
-        // Simulated AI Response (Replace this with a real API call)
-        async function getAIResponse(userText) {
-            // Add a "typing" indicator
-            addMessage("...", false);
-            const loadingMsg = chatWindow.lastElementChild;
+  <!-- Main -->
+  <main class="flex-1 flex flex-col md:ml-64">
 
-            setTimeout(() => {
-                loadingMsg.remove();
-                addMessage("This is a simulated response. To make this real, connect an API like OpenAI or Gemini!", false);
-            }, 1000);
-        }
+    <!-- Mobile Header -->
+    <div class="md:hidden p-2 flex items-center gap-2 border-b dark:border-gray-700">
+      <button id="hamburger">☰</button>
+      <span class="font-semibold">Universal AI</span>
+    </div>
 
-        // Event Listeners
-        function handleSend() {
-            const text = userInput.value.trim();
-            if (text) {
-                addMessage(text, true);
-                userInput.value = '';
-                getAIResponse(text);
-            }
-        }
+    <!-- Messages -->
+    <div id="messages"
+      class="flex-1 overflow-y-auto p-4 space-y-4"></div>
 
-        sendBtn.addEventListener('click', handleSend);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSend();
-        });
+    <!-- Input -->
+    <div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t dark:border-gray-700 safe-bottom">
+      <div class="flex gap-2 p-2">
+        <textarea id="input"
+          rows="1"
+          class="flex-1 resize-none rounded border dark:border-gray-600 bg-gray-50 dark:bg-gray-700 p-2 focus:outline-none"
+          placeholder="Send a message..."></textarea>
+        <button id="sendBtn"
+          class="px-4 bg-blue-600 text-white rounded">Send</button>
+      </div>
+    </div>
 
-        clearBtn.addEventListener('click', () => {
-            chatWindow.innerHTML = '';
-            addMessage("Chat cleared. How can I help?", false);
-        });
+  </main>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal"
+  class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 p-4 rounded w-full max-w-md space-y-3">
+    <h2 class="font-semibold text-lg">Settings</h2>
+
+    <label class="block text-sm">OpenRouter API Key</label>
+    <input id="apiKeyInput" type="password"
+      class="w-full p-2 border rounded dark:bg-gray-700">
+
+    <label class="block text-sm">Model</label>
+    <input id="modelInput"
+      class="w-full p-2 border rounded dark:bg-gray-700"
+      value="deepseek/deepseek-r1:free">
+
+    <label class="block text-sm">System Prompt</label>
+    <textarea id="systemPromptInput"
+      class="w-full p-2 border rounded dark:bg-gray-700"
+      rows="3"></textarea>
+
+    <div class="flex justify-end gap-2">
+      <button id="closeSettings" class="px-3 py-1">Cancel</button>
+      <button id="saveSettings" class="px-3 py-1 bg-blue-600 text-white rounded">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  /* ---------- State ---------- */
+  let chats = JSON.parse(localStorage.getItem('chats') || '[]');
+  let currentChatId = localStorage.getItem('currentChatId');
+  let apiKey = localStorage.getItem('apiKey') || '';
+  let model = localStorage.getItem('model') || 'deepseek/deepseek-r1:free';
+  let dark = localStorage.getItem('dark') === 'true';
+
+  /* ---------- Init ---------- */
+  if (dark) document.documentElement.classList.add('dark');
+  $('apiKeyInput').value = apiKey;
+  $('modelInput').value = model;
+
+  if (!currentChatId) createChat();
+
+  renderChats();
+  renderMessages();
+
+  $('loading').style.display = 'none';
+
+  /* ---------- UI ---------- */
+  $('hamburger').onclick = () => toggleSidebar(true);
+  $('darkToggle').onclick = () => {
+    dark = !dark;
+    localStorage.setItem('dark', dark);
+    document.documentElement.classList.toggle('dark', dark);
+  };
+
+  $('settingsBtn').onclick = () => $('settingsModal').classList.remove('hidden');
+  $('closeSettings').onclick = () => $('settingsModal').classList.add('hidden');
+  $('saveSettings').onclick = () => {
+    apiKey = $('apiKeyInput').value.trim();
+    model = $('modelInput').value.trim() || model;
+    localStorage.setItem('apiKey', apiKey);
+    localStorage.setItem('model', model);
+    $('settingsModal').classList.add('hidden');
+  };
+
+  $('newChatBtn').onclick = createChat;
+  $('sendBtn').onclick = sendMessage;
+  $('input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  /* ---------- Functions ---------- */
+  function toggleSidebar(forceClose) {
+    $('sidebar').classList.toggle('-translate-x-full', forceClose);
+  }
+
+  function createChat() {
+    const id = Date.now().toString();
+    chats.push({ id, title: 'New Chat', messages: [], system: '' });
+    currentChatId = id;
+    persist();
+    renderChats();
+    renderMessages();
+  }
+
+  function renderChats() {
+    $('chatList').innerHTML = '';
+    chats.forEach(chat => {
+      const div = document.createElement('div');
+      div.className = `p-        });
     </script>
 </body>
 </html>
